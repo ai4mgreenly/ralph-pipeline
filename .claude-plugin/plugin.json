@@ -1,8 +1,5 @@
 {
   "name": "ralph-pipeline",
   "version": "0.1.0",
-  "description": "Pipeline commands for creating and managing goals via Ralph",
-  "keywords": ["ralph", "pipeline", "goals", "automation"],
-  "skills": "./skills/",
-  "agents": "./agents/"
+  "description": "Pipeline commands for creating and managing goals via Ralph"
 }

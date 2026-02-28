@@ -6,15 +6,14 @@ Claude Code plugin providing goal management skills for the Ralph autonomous dev
 
 ```
 .claude-plugin/plugin.json    Plugin manifest
-skills/pipeline/SKILL.md      Goal lifecycle commands
-skills/goal-authoring/SKILL.md  Goal writing guidelines
+skills/ralph-goal/SKILL.md      Goal management and authoring
 scripts/goal-*                Ruby CLI scripts (all return JSON)
 local-git.md                  Local-first git architecture spec
 ```
 
 ## What This Does
 
-Exposes two Claude Code skills (`/pipeline`, `/goal-authoring`) that let users create, queue, and manage goals. Goals are executable units of work that Ralph (the orchestrator in `ralph-runs`) picks up and runs autonomously in isolated repo clones.
+Exposes a Claude Code skill (`/ralph-goal`) that let users create, queue, and manage goals. Goals are executable units of work that Ralph (the orchestrator in `ralph-runs`) picks up and runs autonomously in isolated repo clones.
 
 ## The Ralph Ecosystem
 

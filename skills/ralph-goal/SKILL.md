@@ -69,6 +69,7 @@ All commands below are in `${CLAUDE_PLUGIN_ROOT}/scripts/`.
 | `goal-retry` | `<id>` | Requeue a stuck goal |
 | `goal-start` | `<id>` | Mark goal as running |
 | `goal-stuck` | `<id>` | Mark goal as stuck |
+| `goal-depend` | `add <id> <dep_id>` / `remove <id> <dep_id>` / `list <id>` | Add, remove, or list goal dependencies |
 
 ## Creating a Goal
 

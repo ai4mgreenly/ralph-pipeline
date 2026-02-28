@@ -50,7 +50,7 @@ Human writes goal → goal-create (draft) → goal-queue (queued) → Ralph exec
 
 ## Goal Statuses
 
-`draft` → `queued` → `running` → `submitted` → `merged` (or `rejected`/`stuck`)
+`draft` → `queued` → `running` → `done` (or `stuck`/`cancelled`)
 
 ## Goal Commands
 
@@ -65,7 +65,7 @@ All commands below are in `${CLAUDE_PLUGIN_ROOT}/scripts/`.
 | `goal-cancel` | `<id>` | Cancel a non-terminal goal |
 | `goal-comment` | `<id> --body "..."` | Add comment to a goal |
 | `goal-comments` | `<id>` | List comments on a goal |
-| `goal-submit` | `<id>` | Transition running → submitted |
+| `goal-done` | `<id>` | Transition running → done |
 | `goal-retry` | `<id>` | Requeue a stuck goal |
 | `goal-start` | `<id>` | Mark goal as running |
 | `goal-stuck` | `<id>` | Mark goal as stuck |

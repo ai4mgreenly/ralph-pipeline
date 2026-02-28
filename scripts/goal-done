@@ -2,9 +2,9 @@
 # frozen_string_literal: true
 
 #
-# scripts/goal-submit - Transition a goal from running to submitted
+# scripts/goal-done - Transition a goal from running to done
 #
-# Usage: goal-submit <id>
+# Usage: goal-done <id>
 #
 # Output: JSON {"ok": true}
 # Exit code: 0 on success, 1 on failure
@@ -20,21 +20,21 @@ RALPH_PLANS_PORT = ENV.fetch('RALPH_PLANS_PORT')
 def main
   OptionParser.new do |opts|
     opts.banner = <<~HELP
-      Usage: goal-submit <id>
+      Usage: goal-done <id>
 
-      Transition a pipeline goal from running to submitted.
+      Transition a pipeline goal from running to done.
 
       Arguments:
         id    Goal ID (required)
 
       What it does:
-        Transitions the goal from running to submitted.
+        Transitions the goal from running to done.
 
       Output:
         JSON {"ok": true}
 
       Examples:
-        goal-submit 42
+        goal-done 42
     HELP
   end.parse!
 
@@ -45,7 +45,7 @@ def main
     exit 1
   end
 
-  uri = URI("http://#{RALPH_PLANS_HOST}:#{RALPH_PLANS_PORT}/goals/#{id}/submitted")
+  uri = URI("http://#{RALPH_PLANS_HOST}:#{RALPH_PLANS_PORT}/goals/#{id}/done")
   req = Net::HTTP::Patch.new(uri)
   resp = Net::HTTP.start(uri.hostname, uri.port) { |http| http.request(req) }
   result = JSON.parse(resp.body)

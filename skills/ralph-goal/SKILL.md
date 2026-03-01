@@ -58,7 +58,7 @@ All commands below are in `${CLAUDE_PLUGIN_ROOT}/scripts/`.
 
 | Command | Usage | Does |
 |---------|-------|------|
-| `goal-create` | `--title "..." --org ORG --repo REPO [--model MODEL] [--reasoning LEVEL] < body.md` | Create goal (draft). Body via stdin. |
+| `goal-create` | `--title "..." [--org ORG] [--repo REPO] [--model MODEL] [--reasoning LEVEL] < body.md` | Create goal (draft). Body via stdin. org/repo auto-derived from remote origin. |
 | `goal-list` | `[--status STATUS] [--org ORG] [--repo REPO]` | List goals, optionally filtered |
 | `goal-get` | `<id>` | Read goal body + status |
 | `goal-queue` | `<id>` | Transition draft → queued |
@@ -71,41 +71,29 @@ All commands below are in `${CLAUDE_PLUGIN_ROOT}/scripts/`.
 | `goal-stuck` | `<id>` | Mark goal as stuck |
 | `goal-depend` | `add <id> <dep_id>` / `remove <id> <dep_id>` / `list <id>` | Add, remove, or list goal dependencies |
 
-## Deriving org and repo
+## org and repo: Auto-Derived from Remote Origin
 
-**Always derive `--org` and `--repo` from the current project's git remote origin.** Never guess, never ask the user — read the remote URL directly.
+**`goal-create` automatically derives org and repo from `git remote get-url origin`** when `--org` and `--repo` are omitted. You do not need to pass these flags for the current directory's repo.
 
-```bash
-git remote get-url origin
-```
+**Never guess, never invent, never hardcode org or repo values.** They must always come from the git remote origin — either auto-derived by the script or explicitly passed as flags that you read from the remote yourself.
 
-Parse the result:
+The script handles both URL formats:
 
 | Remote URL format | Example | org | repo |
 |-------------------|---------|-----|------|
 | `/mnt/store/git/<org>/<repo>` | `/mnt/store/git/acme/myapp` | `acme` | `myapp` |
 | `git@github.com:<org>/<repo>.git` | `git@github.com:acme/myapp.git` | `acme` | `myapp` |
 
-For the local bare repo path, split on `/` and take the last two segments (org = second-to-last, repo = last).
+Works in both git and jj repositories (jj uses git remotes under the hood).
 
-For the GitHub SSH URL, extract the `<org>/<repo>` part after the `:`, then strip the trailing `.git`.
+**If the remote origin cannot be read**, the script exits with a JSON error — do not guess or proceed with placeholder values.
 
-**If the remote origin cannot be read** (e.g. `git remote get-url origin` fails or returns empty), stop and tell the user — do not guess or proceed with placeholder values.
+**Use `--org`/`--repo` only when targeting a different repo** than the current directory. For the current repo, omit them entirely.
 
 ## Creating a Goal
 
-First, read the remote origin to get org and repo:
-
 ```bash
-git remote get-url origin
-# e.g. /mnt/store/git/acme/myapp  →  org=acme  repo=myapp
-# e.g. git@github.com:acme/myapp.git  →  org=acme  repo=myapp
-```
-
-Then create the goal using those values:
-
-```bash
-cat <<'EOF' | goal-create --title "Add feature X" --org acme --repo myapp
+cat <<'EOF' | goal-create --title "Add feature X"
 ## Objective
 What should be accomplished.
 
@@ -120,6 +108,17 @@ Success criteria.
 EOF
 ```
 
+org and repo are auto-derived from `git remote get-url origin` in the current directory.
+
+To target a different repo, pass the flags explicitly — but still read the values from that repo's remote origin, never guess:
+
+```bash
+# Only when targeting a different repo:
+cat <<'EOF' | goal-create --title "Add feature X" --org acme --repo other-repo
+...
+EOF
+```
+
 Then queue it:
 
 ```bash
@@ -129,7 +128,8 @@ goal-queue <id>
 ## Key Rules
 
 - **Body via stdin** — `goal-create` reads body from stdin
-- **org + repo from remote** — Always run `git remote get-url origin` and parse it; never guess or ask the user unless the remote can't be read
+- **org + repo auto-derived** — Omit `--org`/`--repo` for the current directory; the script derives them from `git remote get-url origin`
+- **Never guess org/repo** — If you must pass them explicitly, read them from the target repo's remote origin first
 - Goals go through Ralph — don't make local changes unless explicitly asked
 
 ## Goal Authoring

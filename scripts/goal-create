@@ -19,6 +19,29 @@ require 'optparse'
 RALPH_PLANS_HOST = ENV.fetch('RALPH_PLANS_HOST')
 RALPH_PLANS_PORT = ENV.fetch('RALPH_PLANS_PORT')
 
+def derive_org_repo_from_remote
+  url = `git remote get-url origin 2>/dev/null`.strip
+  return [nil, nil] if url.empty?
+
+  # Local bare repo: /mnt/store/git/<org>/<repo>
+  if url.start_with?('/')
+    parts = url.split('/')
+    return [parts[-2], parts[-1]] if parts.length >= 2
+  end
+
+  # GitHub SSH URL: git@github.com:<org>/<repo>.git
+  if (m = url.match(/git@[^:]+:([^\/]+)\/(.+?)(?:\.git)?$/))
+    return [m[1], m[2]]
+  end
+
+  # HTTPS URL: https://github.com/<org>/<repo>.git
+  if (m = url.match(%r{https?://[^/]+/([^/]+)/(.+?)(?:\.git)?$}))
+    return [m[1], m[2]]
+  end
+
+  [nil, nil]
+end
+
 def main
   title = nil
   org = nil
@@ -28,14 +51,17 @@ def main
 
   OptionParser.new do |opts|
     opts.banner = <<~HELP
-      Usage: goal-create --title "..." --org ORG --repo REPO [--model MODEL] [--reasoning LEVEL] < body.md
+      Usage: goal-create --title "..." [--org ORG] [--repo REPO] [--model MODEL] [--reasoning LEVEL] < body.md
 
       Create a pipeline goal. Body is read from stdin.
 
+      org and repo are auto-derived from git remote get-url origin when omitted.
+      Use --org/--repo only to target a different repo than the current directory.
+
       Flags:
         --title "..."       Goal title (required)
-        --org ORG           Organization (required)
-        --repo REPO         Repository name (required)
+        --org ORG           Organization (optional; auto-derived from remote origin)
+        --repo REPO         Repository name (optional; auto-derived from remote origin)
         --model MODEL       Model to use: haiku, sonnet, opus (optional)
         --reasoning LEVEL   Reasoning level: none, low, med, high (optional)
 
@@ -43,13 +69,14 @@ def main
         JSON {"ok": true, "id": <goal-id>}
 
       Examples:
-        echo "## Objective\\nDo the thing" | goal-create --title "Add X" --org mgreenly --repo ikigai
-        echo "## Objective\\nDo the thing" | goal-create --title "Add X" --org mgreenly --repo ikigai --model opus --reasoning high
+        echo "## Objective\\nDo the thing" | goal-create --title "Add X"
+        echo "## Objective\\nDo the thing" | goal-create --title "Add X" --model opus --reasoning high
+        echo "## Objective\\nDo the thing" | goal-create --title "Add X" --org mgreenly --repo other-repo
     HELP
 
     opts.on('--title=TITLE', 'Goal title') { |t| title = t }
-    opts.on('--org=ORG', 'Organization') { |o| org = o }
-    opts.on('--repo=REPO', 'Repository name') { |r| repo = r }
+    opts.on('--org=ORG', 'Organization (optional; auto-derived from remote origin)') { |o| org = o }
+    opts.on('--repo=REPO', 'Repository name (optional; auto-derived from remote origin)') { |r| repo = r }
     opts.on('--model=MODEL', 'Model (haiku, sonnet, opus)') { |m| model = m }
     opts.on('--reasoning=LEVEL', 'Reasoning level (none, low, med, high)') { |r| reasoning = r }
   end.parse!
@@ -59,13 +86,20 @@ def main
     exit 1
   end
 
+  # Auto-derive org/repo from remote origin if not provided
+  if org.nil? || repo.nil?
+    derived_org, derived_repo = derive_org_repo_from_remote
+    org ||= derived_org
+    repo ||= derived_repo
+  end
+
   unless org
-    puts JSON.generate(ok: false, error: '--org is required')
+    puts JSON.generate(ok: false, error: '--org not provided and could not be derived from git remote origin')
     exit 1
   end
 
   unless repo
-    puts JSON.generate(ok: false, error: '--repo is required')
+    puts JSON.generate(ok: false, error: '--repo not provided and could not be derived from git remote origin')
     exit 1
   end
 

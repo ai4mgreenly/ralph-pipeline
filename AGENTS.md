@@ -50,5 +50,5 @@ Scripts require `RALPH_PLANS_HOST` and `RALPH_PLANS_PORT` environment variables.
 - Goals specify **what**, never **how** — Ralph discovers the path
 - Body format: `## Objective`, `## Reference`, `## Outcomes`, `## Acceptance`
 - Default workflow is goals-first — local changes only when user explicitly requests
-- `goal-create` reads body from stdin; `--org` and `--repo` are required
+- `goal-create` reads body from stdin; `--org` and `--repo` are optional (auto-derived from `git remote get-url origin`)
 - Originally developed against `ikigai-1` (C11 terminal agent) but not tied to any specific project

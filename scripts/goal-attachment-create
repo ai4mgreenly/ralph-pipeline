@@ -1,0 +1,86 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+#
+# scripts/goal-attachment-create - Create an attachment on a goal
+#
+# Usage: goal-attachment-create <goal_id> --name "filename.md" < body.md
+#
+# Output: JSON {"ok": true, "id": <attachment-id>}
+# Exit code: 0 on success, 1 on failure
+#
+
+require 'json'
+require 'net/http'
+require 'optparse'
+
+RALPH_PLANS_HOST = ENV.fetch('RALPH_PLANS_HOST')
+RALPH_PLANS_PORT = ENV.fetch('RALPH_PLANS_PORT')
+
+def main
+  name = nil
+
+  OptionParser.new do |opts|
+    opts.banner = <<~HELP
+      Usage: goal-attachment-create <goal_id> --name "filename.md" < body.md
+
+      Create an attachment on a pipeline goal.
+
+      Arguments:
+        goal_id    Goal ID (required)
+
+      Options:
+        --name     Attachment filename (required)
+
+      Input:
+        Attachment body is read from stdin.
+
+      Output:
+        JSON {"ok": true, "id": <attachment-id>}
+
+      Examples:
+        echo "# Notes" | goal-attachment-create 42 --name "notes.md"
+        cat report.md | goal-attachment-create 42 --name "report.md"
+    HELP
+    opts.on('--name NAME', 'Attachment filename') { |v| name = v }
+  end.parse!
+
+  goal_id = ARGV[0]&.to_i
+
+  unless goal_id && goal_id > 0
+    puts JSON.generate(ok: false, error: 'goal_id is required')
+    exit 1
+  end
+
+  unless name && !name.empty?
+    puts JSON.generate(ok: false, error: '--name is required')
+    exit 1
+  end
+
+  body = $stdin.read.strip
+
+  if body.empty?
+    puts JSON.generate(ok: false, error: 'attachment body cannot be empty')
+    exit 1
+  end
+
+  uri = URI("http://#{RALPH_PLANS_HOST}:#{RALPH_PLANS_PORT}/goals/#{goal_id}/attachments")
+  payload = { name: name, body: body }
+
+  resp = Net::HTTP.post(uri, JSON.generate(payload), 'Content-Type' => 'application/json')
+  result = JSON.parse(resp.body)
+
+  puts JSON.generate(result)
+  exit(result['ok'] ? 0 : 1)
+rescue Errno::ECONNREFUSED
+  puts JSON.generate(ok: false, error: "cannot connect to ralph-plans at #{RALPH_PLANS_HOST}:#{RALPH_PLANS_PORT}")
+  exit 1
+end
+
+if __FILE__ == $PROGRAM_NAME
+  begin
+    main
+  rescue Interrupt
+    exit 130
+  end
+end

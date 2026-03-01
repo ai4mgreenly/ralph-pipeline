@@ -1,0 +1,111 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+#
+# scripts/goal-attachment-edit - Edit an attachment's body
+#
+# Usage: goal-attachment-edit <goal_id> <attachment_id> --body "new content"
+#        goal-attachment-edit <goal_id> <attachment_id> --body -   (reads from stdin)
+#        goal-attachment-edit <goal_id> <attachment_id> --old-str "find" --new-str "replace"
+#
+# Output: JSON {"ok": true, ...}
+# Exit code: 0 on success, 1 on failure
+#
+
+require 'json'
+require 'net/http'
+require 'optparse'
+
+RALPH_PLANS_HOST = ENV.fetch('RALPH_PLANS_HOST')
+RALPH_PLANS_PORT = ENV.fetch('RALPH_PLANS_PORT')
+
+def main
+  body_arg = nil
+  old_str = nil
+  new_str = nil
+
+  OptionParser.new do |opts|
+    opts.banner = <<~HELP
+      Usage: goal-attachment-edit <goal_id> <attachment_id> --body "new content"
+             goal-attachment-edit <goal_id> <attachment_id> --body -
+             goal-attachment-edit <goal_id> <attachment_id> --old-str "find" --new-str "replace"
+
+      Edit a goal attachment body (full replacement or substring edit).
+
+      Arguments:
+        goal_id        Goal ID (required)
+        attachment_id  Attachment ID (required)
+
+      Options (choose one mode):
+        --body BODY    Full replacement body (use "-" to read from stdin)
+        --old-str STR  Substring to find (requires --new-str)
+        --new-str STR  Replacement string (requires --old-str)
+
+      Output:
+        JSON {"ok": true, ...}
+
+      Examples:
+        echo "# Updated" | goal-attachment-edit 42 7 --body -
+        goal-attachment-edit 42 7 --body "new content"
+        goal-attachment-edit 42 7 --old-str "old text" --new-str "new text"
+    HELP
+    opts.on('--body BODY', 'Full replacement body ("-" reads from stdin)') { |v| body_arg = v }
+    opts.on('--old-str STR', 'Substring to find') { |v| old_str = v }
+    opts.on('--new-str STR', 'Replacement string') { |v| new_str = v }
+  end.parse!
+
+  goal_id = ARGV[0]&.to_i
+  attachment_id = ARGV[1]&.to_i
+
+  unless goal_id && goal_id > 0
+    puts JSON.generate(ok: false, error: 'goal_id is required')
+    exit 1
+  end
+
+  unless attachment_id && attachment_id > 0
+    puts JSON.generate(ok: false, error: 'attachment_id is required')
+    exit 1
+  end
+
+  payload = {}
+
+  if body_arg
+    body_content = body_arg == '-' ? $stdin.read.strip : body_arg
+    if body_content.empty?
+      puts JSON.generate(ok: false, error: 'body cannot be empty')
+      exit 1
+    end
+    payload[:body] = body_content
+  elsif old_str || new_str
+    unless old_str && new_str
+      puts JSON.generate(ok: false, error: '--old-str and --new-str must be used together')
+      exit 1
+    end
+    payload[:old_str] = old_str
+    payload[:new_str] = new_str
+  else
+    puts JSON.generate(ok: false, error: 'must provide --body or --old-str/--new-str')
+    exit 1
+  end
+
+  uri = URI("http://#{RALPH_PLANS_HOST}:#{RALPH_PLANS_PORT}/goals/#{goal_id}/attachments/#{attachment_id}")
+  req = Net::HTTP::Patch.new(uri)
+  req.content_type = 'application/json'
+  req.body = JSON.generate(payload)
+  resp = Net::HTTP.start(uri.hostname, uri.port) { |http| http.request(req) }
+  result = JSON.parse(resp.body)
+
+  puts JSON.generate(result)
+  exit(result['ok'] ? 0 : 1)
+rescue Errno::ECONNREFUSED
+  puts JSON.generate(ok: false, error: "cannot connect to ralph-plans at #{RALPH_PLANS_HOST}:#{RALPH_PLANS_PORT}")
+  exit 1
+end
+
+if __FILE__ == $PROGRAM_NAME
+  begin
+    main
+  rescue Interrupt
+    exit 130
+  end
+end

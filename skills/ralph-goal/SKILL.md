@@ -71,10 +71,41 @@ All commands below are in `${CLAUDE_PLUGIN_ROOT}/scripts/`.
 | `goal-stuck` | `<id>` | Mark goal as stuck |
 | `goal-depend` | `add <id> <dep_id>` / `remove <id> <dep_id>` / `list <id>` | Add, remove, or list goal dependencies |
 
-## Creating a Goal
+## Deriving org and repo
+
+**Always derive `--org` and `--repo` from the current project's git remote origin.** Never guess, never ask the user — read the remote URL directly.
 
 ```bash
-cat <<'EOF' | goal-create --title "Add feature X" --org myorg --repo myrepo
+git remote get-url origin
+```
+
+Parse the result:
+
+| Remote URL format | Example | org | repo |
+|-------------------|---------|-----|------|
+| `/mnt/store/git/<org>/<repo>` | `/mnt/store/git/acme/myapp` | `acme` | `myapp` |
+| `git@github.com:<org>/<repo>.git` | `git@github.com:acme/myapp.git` | `acme` | `myapp` |
+
+For the local bare repo path, split on `/` and take the last two segments (org = second-to-last, repo = last).
+
+For the GitHub SSH URL, extract the `<org>/<repo>` part after the `:`, then strip the trailing `.git`.
+
+**If the remote origin cannot be read** (e.g. `git remote get-url origin` fails or returns empty), stop and tell the user — do not guess or proceed with placeholder values.
+
+## Creating a Goal
+
+First, read the remote origin to get org and repo:
+
+```bash
+git remote get-url origin
+# e.g. /mnt/store/git/acme/myapp  →  org=acme  repo=myapp
+# e.g. git@github.com:acme/myapp.git  →  org=acme  repo=myapp
+```
+
+Then create the goal using those values:
+
+```bash
+cat <<'EOF' | goal-create --title "Add feature X" --org acme --repo myapp
 ## Objective
 What should be accomplished.
 
@@ -98,7 +129,7 @@ goal-queue <id>
 ## Key Rules
 
 - **Body via stdin** — `goal-create` reads body from stdin
-- **org + repo required** — Every goal targets a specific GitHub org/repo
+- **org + repo from remote** — Always run `git remote get-url origin` and parse it; never guess or ask the user unless the remote can't be read
 - Goals go through Ralph — don't make local changes unless explicitly asked
 
 ## Goal Authoring

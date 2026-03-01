@@ -70,6 +70,11 @@ All commands below are in `${CLAUDE_PLUGIN_ROOT}/scripts/`.
 | `goal-start` | `<id>` | Mark goal as running |
 | `goal-stuck` | `<id>` | Mark goal as stuck |
 | `goal-depend` | `add <id> <dep_id>` / `remove <id> <dep_id>` / `list <id>` | Add, remove, or list goal dependencies |
+| `goal-attachment-create` | `<goal_id> --name "name.md" < body.md` | Create attachment from stdin |
+| `goal-attachments` | `<goal_id>` | List attachments for a goal |
+| `goal-attachment-get` | `<goal_id> <attachment_id>` | Get single attachment with body |
+| `goal-attachment-edit` | `<goal_id> <attachment_id> --old-str "..." --new-str "..."` or `--body "..."` | Edit attachment body (substring or full replacement) |
+| `goal-attachment-delete` | `<goal_id> <attachment_id>` | Delete attachment |
 
 ## org and repo: Auto-Derived from Remote Origin
 
@@ -123,6 +128,47 @@ Then queue it:
 
 ```bash
 goal-queue <id>
+```
+
+## Attachments
+
+Attachments are markdown text files associated with a goal. Each attachment has a unique name per goal and a body (markdown text). They are useful for storing supplementary context, reports, or notes alongside a goal.
+
+| Command | Usage | Does |
+|---------|-------|------|
+| `goal-attachment-create` | `<goal_id> --name "name.md" < body.md` | Create attachment from stdin |
+| `goal-attachments` | `<goal_id>` | List attachments for a goal |
+| `goal-attachment-get` | `<goal_id> <attachment_id>` | Get single attachment with body |
+| `goal-attachment-edit` | `<goal_id> <attachment_id> --old-str "..." --new-str "..."` or `--body "..."` | Edit attachment body |
+| `goal-attachment-delete` | `<goal_id> <attachment_id>` | Delete attachment |
+
+### Edit Modes
+
+`goal-attachment-edit` supports two modes:
+
+- **Substring replacement** — `--old-str "find" --new-str "replace"`: Replaces the first unique occurrence of `old-str` in the body. Fails if the string is not found or matches more than once.
+- **Full body replacement** — `--body "new content"` or `--body -` (reads from stdin): Replaces the entire attachment body.
+
+### Examples
+
+```bash
+# Create an attachment
+echo "# Notes\nSome context here." | goal-attachment-create 42 --name "notes.md"
+
+# List attachments
+goal-attachments 42
+
+# Get a single attachment
+goal-attachment-get 42 7
+
+# Edit with substring replacement
+goal-attachment-edit 42 7 --old-str "old text" --new-str "new text"
+
+# Edit with full body replacement (via stdin)
+cat updated-notes.md | goal-attachment-edit 42 7 --body -
+
+# Delete an attachment
+goal-attachment-delete 42 7
 ```
 
 ## Key Rules

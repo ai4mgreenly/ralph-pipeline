@@ -1,7 +1,8 @@
 {
   "preload": [
     "jj",
-    "align"
+    "align",
+    "scratch"
   ],
   "advertise": []
 }

@@ -254,6 +254,30 @@ Discover all hardcoded /usr/local/etc path references in src/ and update them to
 
 Why explicit discovery matters: Objective starts with "Discover", first outcome confirms discovery happened. Ralph won't skip the grep step.
 
+**Implementation recipe example:**
+
+Bad (outcomes as pseudocode):
+```markdown
+## Outcomes
+- 1. Call `db.connect(config.dsn)` in `main()` before handler registration
+- 2. Wrap each handler with `withDB(db)` middleware using a closure
+- 3. Call `rows.Scan(&user.ID, &user.Name, &user.Email)` in `GetUser()`
+- 4. Add `defer db.Close()` at end of `main()`
+```
+
+Problems: This is an implementation recipe, not an end state. Ralph reads numbered steps and executes them all at once instead of iterating. If step 3 fails, Ralph has no way to verify step 2 independently. The steps also encode brittle assumptions — field order in `Scan`, the exact middleware shape — that Ralph may need to adapt.
+
+Good (outcomes as observable end-state properties):
+```markdown
+## Outcomes
+- Database connection is established at startup using `config.dsn`
+- All HTTP handlers have access to the database connection
+- `GET /users/:id` returns correct user fields (id, name, email) from the database
+- Application shuts down cleanly without connection leaks
+```
+
+Why better: Each outcome is independently verifiable. Ralph can iterate on each one separately, adapt the implementation to the codebase, and verify correctness through tests rather than checking off pseudocode steps.
+
 ### Anti-Patterns
 
 - **Step-by-step instructions** — "First do X, then Y" (Ralph discovers path)
@@ -261,5 +285,6 @@ Why explicit discovery matters: Objective starts with "Discover", first outcome 
 - **Vague outcomes** — "Feature implemented" (Be specific and measurable)
 - **Tiny goals** — Breaking cohesive work into artificial steps
 - **Pre-discovered work** — Listing specific file:line locations to fix (Ralph should discover)
+- **Implementation recipes** — Numbered steps, pseudocode, or function call sequences in Outcomes. Outcomes describe the end state, not the steps to get there. Ralph sees numbered steps and executes them all at once instead of iterating.
 
 **Do this:** Comprehensive objective, all references, measurable outcomes, trust Ralph to iterate and discover.

@@ -1,0 +1,203 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+#
+# scripts/repo-create - Create a three-tier git repo (GitHub → bare → local)
+#
+# Usage: repo-create --org ORG --repo REPO [--private] [--local-path PATH]
+#
+# Output: JSON {"ok": true, "org": "...", "repo": "...", ...}
+# Exit code: 0 on success, 1 on failure
+#
+
+require 'json'
+require 'optparse'
+require 'fileutils'
+require 'tmpdir'
+
+MAX_RETRIES = 3
+RETRY_DELAY = 2
+
+def run(cmd)
+  output = `#{cmd} 2>&1`
+  [$?.success?, output.strip]
+end
+
+def retry_op(description, max: MAX_RETRIES, delay: RETRY_DELAY)
+  attempts = 0
+  loop do
+    attempts += 1
+    ok, output = yield
+    return [true, output] if ok
+
+    if attempts >= max
+      return [false, "#{description} failed after #{max} attempts: #{output}"]
+    end
+
+    $stderr.puts "#{description} attempt #{attempts}/#{max} failed, retrying in #{delay}s..."
+    sleep delay
+  end
+end
+
+def main
+  org = nil
+  repo = nil
+  private_repo = false
+  local_path = nil
+
+  OptionParser.new do |opts|
+    opts.banner = <<~HELP
+      Usage: repo-create --org ORG --repo REPO [--private] [--local-path PATH]
+
+      Create a new repository with the full ralph three-tier git structure:
+        1. GitHub remote repository
+        2. Bare repo at /mnt/store/git/<org>/<repo>
+        3. Local working clone at ~/projects/<repo> (or --local-path)
+
+      Flags:
+        --org ORG           Organization (required)
+        --repo REPO         Repository name (required)
+        --private           Create private GitHub repo (default: public)
+        --local-path PATH   Local clone path (default: ~/projects/<repo>)
+
+      Output:
+        JSON {"ok": true, "org": "...", "repo": "...", "github": "...", "bare": "...", "local": "..."}
+
+      Examples:
+        repo-create --org mgreenly --repo my-app
+        repo-create --org mgreenly --repo my-app --private
+        repo-create --org mgreenly --repo my-app --local-path ~/work/my-app
+    HELP
+
+    opts.on('--org=ORG', 'Organization') { |o| org = o }
+    opts.on('--repo=REPO', 'Repository name') { |r| repo = r }
+    opts.on('--private', 'Create private GitHub repo') { private_repo = true }
+    opts.on('--local-path=PATH', 'Local clone path') { |p| local_path = p }
+  end.parse!
+
+  unless org
+    puts JSON.generate(ok: false, error: '--org is required')
+    exit 1
+  end
+
+  unless repo
+    puts JSON.generate(ok: false, error: '--repo is required')
+    exit 1
+  end
+
+  local_path ||= File.expand_path("~/projects/#{repo}")
+  bare_path = "/mnt/store/git/#{org}/#{repo}"
+  github_slug = "#{org}/#{repo}"
+  visibility = private_repo ? '--private' : '--public'
+
+  # Pre-flight checks
+  ok, output = run('gh auth status')
+  unless ok
+    puts JSON.generate(ok: false, error: "gh CLI not authenticated: #{output}")
+    exit 1
+  end
+
+  if Dir.exist?(bare_path)
+    puts JSON.generate(ok: false, error: "bare repo already exists: #{bare_path}")
+    exit 1
+  end
+
+  if Dir.exist?(local_path)
+    puts JSON.generate(ok: false, error: "local path already exists: #{local_path}")
+    exit 1
+  end
+
+  bare_parent = File.dirname(bare_path)
+  unless File.writable?(bare_parent) || File.writable?(File.dirname(bare_parent))
+    puts JSON.generate(ok: false, error: "cannot write to #{bare_parent}")
+    exit 1
+  end
+
+  completed = []
+
+  # Step 1: Create GitHub repo
+  ok, err = retry_op('GitHub repo creation') do
+    run("gh repo create #{github_slug} #{visibility} --confirm")
+  end
+  unless ok
+    puts JSON.generate(ok: false, error: err, completed: completed)
+    exit 1
+  end
+  completed << 'github'
+
+  # Step 2: Clone as bare repo
+  FileUtils.mkdir_p(bare_parent)
+  ok, err = retry_op('bare clone') do
+    run("git clone --bare git@github.com:#{github_slug}.git #{bare_path}")
+  end
+  unless ok
+    puts JSON.generate(ok: false, error: err, completed: completed)
+    exit 1
+  end
+  completed << 'bare'
+
+  # Step 3: Create initial commit via temp clone, push to bare and GitHub
+  ok, err = retry_op('initial commit') do
+    Dir.mktmpdir('repo-init') do |tmpdir|
+      tmp_clone = File.join(tmpdir, repo)
+      s, o = run("git clone #{bare_path} #{tmp_clone}")
+      unless s
+        next [false, "temp clone failed: #{o}"]
+      end
+
+      readme = File.join(tmp_clone, 'README.md')
+      File.write(readme, "# #{repo}\n")
+
+      cmds = [
+        "cd #{tmp_clone} && git add README.md",
+        "cd #{tmp_clone} && git commit -m 'Initial commit'",
+        "cd #{tmp_clone} && git push origin HEAD"
+      ]
+      cmds.each do |cmd|
+        s, o = run(cmd)
+        unless s
+          next [false, "#{cmd}: #{o}"]
+        end
+      end
+
+      # Push from bare repo to GitHub
+      s, o = run("git -C #{bare_path} push origin HEAD")
+      unless s
+        next [false, "push to GitHub: #{o}"]
+      end
+
+      [true, '']
+    end
+  end
+  unless ok
+    puts JSON.generate(ok: false, error: err, completed: completed)
+    exit 1
+  end
+  completed << 'initial_commit'
+
+  # Step 4: Clone bare repo to local path
+  FileUtils.mkdir_p(File.dirname(local_path))
+  ok, err = retry_op('local clone') do
+    run("git clone #{bare_path} #{local_path}")
+  end
+  unless ok
+    puts JSON.generate(ok: false, error: err, completed: completed)
+    exit 1
+  end
+  completed << 'local'
+
+  puts JSON.generate(
+    ok: true,
+    org: org,
+    repo: repo,
+    github: github_slug,
+    bare: bare_path,
+    local: local_path
+  )
+rescue Interrupt
+  exit 130
+end
+
+if __FILE__ == $PROGRAM_NAME
+  main
+end

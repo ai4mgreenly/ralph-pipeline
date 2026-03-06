@@ -6,8 +6,9 @@ Claude Code plugin providing goal management skills for the Ralph autonomous dev
 
 ```
 .claude-plugin/plugin.json    Plugin manifest
-skills/ralph-goal/SKILL.md      Goal management and authoring
-scripts/goal-*                Ruby CLI scripts (all return JSON)
+skills/                       Plugin skills (shipped to consumers)
+scripts/                      Plugin scripts (shipped to consumers)
+.claude/library/              Project-local skills (for working on this repo)
 ```
 
 ## What This Does

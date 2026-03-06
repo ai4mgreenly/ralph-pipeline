@@ -19,7 +19,9 @@ An ad-hoc collection of nano-services that grew into an autonomous software deve
 
 **ralph-counts** (Python, port 5004) — Metrics dashboard. Reads an append-only JSONL file of completed runs and shows cost, tokens, time, iterations, and lines changed. Built to answer "is this actually saving time?"
 
-**ralph-remembers** (Go, no port yet) — Long-term memory service. Persistent document store with hybrid search (vector + BM25) so agents can retain knowledge across sessions and projects. The newest addition — still taking shape.
+**ralph-remembers** (Go, no port yet) — Long-term memory service. Persistent document store with hybrid search (vector + BM25) so agents can retain knowledge across sessions and projects. Still taking shape.
+
+**ralph-herds** (not yet implemented) — Process supervisor. A single entry point to launch, monitor, and restart all the other nano-services. Built because manually starting six services got tedious. Herding cats.
 
 ## How They Talk
 

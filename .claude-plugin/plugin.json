@@ -1,5 +1,5 @@
 {
   "name": "ralph-pipeline",
   "version": "0.1.0",
-  "description": "Pipeline commands for creating and managing goals via Ralph"
+  "description": "Pipeline commands for creating and managing goals and repositories via Ralph"
 }

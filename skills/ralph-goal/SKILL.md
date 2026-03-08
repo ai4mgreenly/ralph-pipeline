@@ -16,7 +16,10 @@ RALPH_PLANS_HOST=localhost
 RALPH_PLANS_PORT=5001
 ```
 
-Scripts are located at `${CLAUDE_PLUGIN_ROOT}/scripts/`. When invoking any goal command, use this path to resolve the script location.
+> **CRITICAL: Always use the full absolute path when invoking goal scripts.**
+> Scripts live at `/home/ai4mgreenly/projects/ralph-pipeline/scripts/`.
+> **Never invoke bare command names like `goal-list` or `goal-create`** — they are not on `$PATH` and will fail with "command not found".
+> Every invocation must use the full path, e.g. `/home/ai4mgreenly/projects/ralph-pipeline/scripts/goal-create`.
 
 ## Flow
 
@@ -54,7 +57,7 @@ Human writes goal → goal-create (draft) → goal-queue (queued) → Ralph exec
 
 ## Goal Commands
 
-All commands below are in `${CLAUDE_PLUGIN_ROOT}/scripts/`.
+All commands below must be invoked with their full absolute path: `/home/ai4mgreenly/projects/ralph-pipeline/scripts/<command-name>`. The table shows the script name for readability — always prepend the full path in actual invocations.
 
 | Command | Usage | Does |
 |---------|-------|------|
@@ -99,7 +102,7 @@ Works in both git and jj repositories (jj uses git remotes under the hood).
 ## Creating a Goal
 
 ```bash
-cat <<'EOF' | goal-create --title "Add feature X"
+cat <<'EOF' | /home/ai4mgreenly/projects/ralph-pipeline/scripts/goal-create --title "Add feature X"
 ## Objective
 What should be accomplished.
 
@@ -120,7 +123,7 @@ To target a different repo, pass the flags explicitly — but still read the val
 
 ```bash
 # Only when targeting a different repo:
-cat <<'EOF' | goal-create --title "Add feature X" --org acme --repo other-repo
+cat <<'EOF' | /home/ai4mgreenly/projects/ralph-pipeline/scripts/goal-create --title "Add feature X" --org acme --repo other-repo
 ...
 EOF
 ```
@@ -128,7 +131,7 @@ EOF
 Then queue it:
 
 ```bash
-goal-queue <id>
+/home/ai4mgreenly/projects/ralph-pipeline/scripts/goal-queue <id>
 ```
 
 ## Attachments
@@ -153,23 +156,25 @@ Attachments are markdown text files associated with a goal. Each attachment has 
 ### Examples
 
 ```bash
+SCRIPTS=/home/ai4mgreenly/projects/ralph-pipeline/scripts
+
 # Create an attachment
-echo "# Notes\nSome context here." | goal-attachment-create 42 --name "notes.md"
+echo "# Notes\nSome context here." | $SCRIPTS/goal-attachment-create 42 --name "notes.md"
 
 # List attachments
-goal-attachments 42
+$SCRIPTS/goal-attachments 42
 
 # Get a single attachment
-goal-attachment-get 42 7
+$SCRIPTS/goal-attachment-get 42 7
 
 # Edit with substring replacement
-goal-attachment-edit 42 7 --old-str "old text" --new-str "new text"
+$SCRIPTS/goal-attachment-edit 42 7 --old-str "old text" --new-str "new text"
 
 # Edit with full body replacement (via stdin)
-cat updated-notes.md | goal-attachment-edit 42 7 --body -
+cat updated-notes.md | $SCRIPTS/goal-attachment-edit 42 7 --body -
 
 # Delete an attachment
-goal-attachment-delete 42 7
+$SCRIPTS/goal-attachment-delete 42 7
 ```
 
 ## Key Rules

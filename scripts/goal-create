@@ -16,7 +16,7 @@ require 'json'
 require 'net/http'
 require 'optparse'
 
-RALPH_PLANS_BASE = "#{ENV.fetch('RALPH_PLANS_URL')}/api/plans"
+RALPH_PLANS_URL = ENV.fetch('RALPH_PLANS_URL', 'http://ralph-plans.localhost:8000')
 
 def derive_org_repo_from_remote
   url = `git remote get-url origin 2>/dev/null`.strip
@@ -134,7 +134,7 @@ def main
   end
 
   # POST to ralph-plans API
-  uri = URI("#{RALPH_PLANS_BASE}/goals")
+  uri = URI("#{RALPH_PLANS_URL}/goals")
   payload = { org: org, repo: repo, title: title, body: body }
   payload[:model] = model if model
   payload[:reasoning] = reasoning if reasoning
@@ -145,7 +145,7 @@ def main
   puts JSON.generate(result)
   exit(result['ok'] ? 0 : 1)
 rescue Errno::ECONNREFUSED
-  puts JSON.generate(ok: false, error: "cannot connect to ralph-plans at #{RALPH_PLANS_BASE}")
+  puts JSON.generate(ok: false, error: "cannot connect to ralph-plans at #{RALPH_PLANS_URL}")
   exit 1
 end
 

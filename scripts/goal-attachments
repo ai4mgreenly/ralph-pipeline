@@ -14,7 +14,7 @@ require 'json'
 require 'net/http'
 require 'optparse'
 
-RALPH_PLANS_BASE = "#{ENV.fetch('RALPH_PLANS_URL')}/api/plans"
+RALPH_PLANS_URL = ENV.fetch('RALPH_PLANS_URL', 'http://ralph-plans.localhost:8000')
 
 def main
   OptionParser.new do |opts|
@@ -43,14 +43,14 @@ def main
     exit 1
   end
 
-  uri = URI("#{RALPH_PLANS_BASE}/goals/#{goal_id}/attachments")
+  uri = URI("#{RALPH_PLANS_URL}/goals/#{goal_id}/attachments")
   resp = Net::HTTP.get_response(uri)
   result = JSON.parse(resp.body)
 
   puts JSON.generate(result)
   exit(result['ok'] ? 0 : 1)
 rescue Errno::ECONNREFUSED
-  puts JSON.generate(ok: false, error: "cannot connect to ralph-plans at #{RALPH_PLANS_BASE}")
+  puts JSON.generate(ok: false, error: "cannot connect to ralph-plans at #{RALPH_PLANS_URL}")
   exit 1
 end
 

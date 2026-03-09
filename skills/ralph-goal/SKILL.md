@@ -9,11 +9,10 @@ Autonomous development pipeline. Goals are executable units of work. Ralph (the 
 
 ## Setup
 
-Scripts require two environment variables (typically set in the consuming project's `.envrc`):
+Scripts require one environment variable (typically set in the consuming project's `.envrc`):
 
 ```
-RALPH_PLANS_HOST=localhost
-RALPH_PLANS_PORT=5001
+RALPH_PLANS_URL=http://ralph-plans.localhost:8000
 ```
 
 > **CRITICAL: Always use the full absolute path when invoking goal scripts.**

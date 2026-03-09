@@ -25,7 +25,7 @@ Exposes a Claude Code skill (`/ralph-goal`) that let users create, queue, and ma
 | ralph-logs | 5003 | Go | Real-time log streaming via WebSocket |
 | ralph-counts | 5004 | Python | Execution metrics dashboard |
 
-All services communicate via REST through `RALPH_*_HOST/PORT` env vars (set in `.envrc`).
+All services communicate via REST through `RALPH_*_URL` env vars (set in `.envrc`).
 
 ## Goal Lifecycle
 
@@ -44,7 +44,7 @@ All in `scripts/`, all Ruby, all return `{"ok": true/false, ...}`:
 
 `goal-create` (stdin body), `goal-list`, `goal-get`, `goal-queue`, `goal-start`, `goal-done`, `goal-stuck`, `goal-retry`, `goal-cancel`, `goal-comment`, `goal-comments`
 
-Scripts require `RALPH_PLANS_HOST` and `RALPH_PLANS_PORT` environment variables.
+Scripts require `RALPH_PLANS_URL` environment variable.
 
 ## Key Conventions
 

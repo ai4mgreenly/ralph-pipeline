@@ -16,7 +16,7 @@ require 'json'
 require 'net/http'
 require 'optparse'
 
-RALPH_PLANS_BASE = 'http://127.0.0.1:8000/api/plans'
+RALPH_PLANS_BASE = "#{ENV.fetch('RALPH_PLANS_URL')}/api/plans"
 
 def derive_org_repo_from_remote
   url = `git remote get-url origin 2>/dev/null`.strip

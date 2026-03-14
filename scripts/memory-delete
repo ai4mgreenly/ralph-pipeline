@@ -1,0 +1,68 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+#
+# scripts/memory-delete - Soft-delete a document in ralph-remembers
+#
+# Usage: memory-delete <id>
+#
+# Output: JSON {"ok": true}
+# Exit code: 0 on success, 1 on failure
+#
+
+require 'json'
+require 'net/http'
+require 'optparse'
+
+RALPH_REMEMBERS_URL = ENV.fetch('RALPH_REMEMBERS_URL', 'http://ralph-remembers.localhost:8000')
+
+def main
+  OptionParser.new do |opts|
+    opts.banner = <<~HELP
+      Usage: memory-delete <id>
+
+      Soft-delete a document by its ID. The document is marked as deleted and
+      excluded from list and search results. Revision history remains accessible.
+
+      Arguments:
+        id    Document UUID (required)
+
+      Output:
+        JSON {"ok": true}
+
+      Examples:
+        memory-delete a1b2c3d4-e5f6-7890-abcd-ef1234567890
+    HELP
+  end.parse!
+
+  id = ARGV[0]
+
+  unless id && !id.empty?
+    puts JSON.generate(ok: false, error: 'document id is required')
+    exit 1
+  end
+
+  uri = URI("#{RALPH_REMEMBERS_URL}/documents/#{id}")
+  req = Net::HTTP::Delete.new(uri)
+  resp = Net::HTTP.start(uri.hostname, uri.port) { |http| http.request(req) }
+  result = JSON.parse(resp.body)
+
+  if resp.code.to_i >= 400
+    puts JSON.generate(ok: false, error: result['error'] || 'request failed')
+    exit 1
+  end
+
+  puts JSON.generate(result)
+  exit 0
+rescue Errno::ECONNREFUSED
+  puts JSON.generate(ok: false, error: "cannot connect to ralph-remembers at #{RALPH_REMEMBERS_URL}")
+  exit 1
+end
+
+if __FILE__ == $PROGRAM_NAME
+  begin
+    main
+  rescue Interrupt
+    exit 130
+  end
+end

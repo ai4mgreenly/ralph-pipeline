@@ -38,6 +38,21 @@ All commands below must be invoked with their full absolute path: `/home/ai4mgre
 | `memory-revisions` | `<id>` | List revision metadata for a document (newest first) |
 | `memory-revision-get` | `<id> <rev>` | Retrieve a specific revision with full body |
 
+## Defaults
+
+When `--agent` or `--project` are omitted, scripts auto-derive them from the current git repository:
+
+- `--agent` defaults to the output of `git rev-parse --show-toplevel` (the absolute path to the repo root)
+- `--project` defaults to `org/repo` parsed from `git remote get-url origin`
+
+If either flag is omitted and the script is not run inside a git repository, it exits with an error:
+
+```
+{"ok": false, "error": "not in a git repository; --agent and --project are required"}
+```
+
+Passing explicit `--agent` or `--project` flags always overrides the derived defaults.
+
 ## Examples
 
 ```bash

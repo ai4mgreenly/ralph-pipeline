@@ -16,6 +16,41 @@ require 'optparse'
 
 RALPH_REMEMBERS_URL = ENV.fetch('RALPH_REMEMBERS_URL', 'http://ralph-remembers.localhost:8000')
 
+def derive_org_repo_from_remote
+  url = `git remote get-url origin 2>/dev/null`.strip
+  return [nil, nil] if url.empty?
+
+  # Local bare repo: /mnt/store/git/<org>/<repo>
+  if url.start_with?('/')
+    parts = url.split('/')
+    return [parts[-2], parts[-1]] if parts.length >= 2
+  end
+
+  # GitHub SSH URL: git@github.com:<org>/<repo>.git
+  if (m = url.match(/git@[^:]+:([^\/]+)\/(.+?)(?:\.git)?$/))
+    return [m[1], m[2]]
+  end
+
+  # HTTPS URL: https://github.com/<org>/<repo>.git
+  if (m = url.match(%r{https?://[^/]+/([^/]+)/(.+?)(?:\.git)?$}))
+    return [m[1], m[2]]
+  end
+
+  [nil, nil]
+end
+
+def derive_defaults
+  toplevel = `git rev-parse --show-toplevel 2>/dev/null`.strip
+  if toplevel.empty?
+    puts JSON.generate(ok: false, error: 'not in a git repository; --agent and --project are required')
+    exit 1
+  end
+
+  org, repo = derive_org_repo_from_remote
+  project = (org && repo) ? "#{org}/#{repo}" : nil
+  [toplevel, project]
+end
+
 def main
   agent = nil
   project = nil
@@ -27,15 +62,19 @@ def main
 
       Create a document in ralph-remembers. Body is read from stdin.
 
+      agent and project are auto-derived from the git repo when omitted.
+      Use --agent/--project only to override the derived defaults.
+
       Flags:
-        --agent AGENT       Agent identifier (optional)
-        --project PROJECT   Project identifier (optional)
+        --agent AGENT       Agent identifier (optional; defaults to git repo root path)
+        --project PROJECT   Project identifier (optional; defaults to org/repo from remote origin)
         --title TITLE       Human-readable title (optional; unique per agent+project scope)
 
       Output:
         JSON {"ok": true, "id": ..., "agent": ..., "project": ..., "title": ..., "body": ..., ...}
 
       Examples:
+        echo "Session notes" | memory-create --title "Session 1"
         echo "Session notes" | memory-create --agent my-agent --title "Session 1"
         cat notes.md | memory-create --agent my-agent --project my-project --title "Architecture notes"
     HELP
@@ -44,6 +83,12 @@ def main
     opts.on('--project=PROJECT', 'Project identifier') { |p| project = p }
     opts.on('--title=TITLE', 'Document title') { |t| title = t }
   end.parse!
+
+  if agent.nil? || project.nil?
+    derived_agent, derived_project = derive_defaults
+    agent ||= derived_agent
+    project ||= derived_project
+  end
 
   if $stdin.tty?
     puts JSON.generate(ok: false, error: 'body must be provided on stdin')

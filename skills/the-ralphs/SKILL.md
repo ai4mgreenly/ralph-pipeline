@@ -9,23 +9,31 @@ An ad-hoc collection of nano-services that grew into an autonomous software deve
 
 ## The Services
 
-**ralph-plans** (Go/SQLite, port 5001) — Where goals live. A REST API wrapping a SQLite database that tracks goals through their lifecycle: `draft → queued → running → done` (with `stuck` for failures and retry). Started as a replacement for GitHub Issues when those proved too clunky for goal management. Handles dependencies, comments, and attachments.
+**ralph-herds** (Go) — Process supervisor and reverse proxy. Listens on `localhost:8000`. Launches all other nano-services, dynamically assigns each a port at startup, and routes inbound traffic via Host-header subdomain matching. Single entry point: start herds, everything else comes up. Built because manually starting six services got tedious. Herding cats.
 
-**ralph-runs** (Ruby, port 5002) — The orchestrator. Polls ralph-plans for queued goals, clones repos into isolated directories, spawns Claude agents to work on them, and merges results back to main. Retries up to 3 times on failure. Uses jujutsu (jj) for version control. This was the first piece — originally just a script to stop manually running agents.
+**ralph-plans** (Go/SQLite) — Where goals live. A REST API wrapping a SQLite database that tracks goals through their lifecycle: `draft → queued → running → done` (with `stuck` for failures and retry). Started as a replacement for GitHub Issues when those proved too clunky for goal management. Handles dependencies, comments, and attachments.
 
-**ralph-shows** (TypeScript/Deno, port 5000) — Web dashboard. Polls ralph-plans every 2 seconds and shows what's running, queued, stuck, done. Read-only. Built because constantly curling the API got old.
+**ralph-runs** (Ruby) — The orchestrator. Polls ralph-plans for queued goals, clones repos into isolated directories, spawns Claude agents to work on them, and merges results back to main. Retries up to 3 times on failure. Uses jujutsu (jj) for version control. This was the first piece — originally just a script to stop manually running agents.
 
-**ralph-logs** (Go, port 5003) — Log tail in a browser. Watches log files via glob patterns and streams them over WebSocket. Handles file rotation. Built because `tail -f` across multiple agent runs was unmanageable.
+**ralph-shows** (TypeScript/Deno) — Web dashboard. Polls ralph-plans every 2 seconds and shows what's running, queued, stuck, done. Read-only. Built because constantly curling the API got old.
 
-**ralph-counts** (Python, port 5004) — Metrics dashboard. Reads an append-only JSONL file of completed runs and shows cost, tokens, time, iterations, and lines changed. Built to answer "is this actually saving time?"
+**ralph-logs** (Go) — Log tail in a browser. Watches log files via glob patterns and streams them over WebSocket. Handles file rotation. Built because `tail -f` across multiple agent runs was unmanageable.
 
-**ralph-remembers** (Go, no port yet) — Long-term memory service. Persistent document store with hybrid search (vector + BM25) so agents can retain knowledge across sessions and projects. Still taking shape.
+**ralph-counts** (Python) — Metrics dashboard. Reads an append-only JSONL file of completed runs and shows cost, tokens, time, iterations, and lines changed. Built to answer "is this actually saving time?"
 
-**ralph-herds** (not yet implemented) — Process supervisor. A single entry point to launch, monitor, and restart all the other nano-services. Built because manually starting six services got tedious. Herding cats.
+**ralph-remembers** (Go) — Long-term memory service. Persistent document store with hybrid search (vector + BM25) so agents can retain knowledge across sessions and projects. Port dynamically assigned by ralph-herds at startup.
 
 ## How They Talk
 
-All services run on localhost. Communication is REST via `RALPH_*_HOST/PORT` environment variables (set in each project's `.envrc`). No service discovery, no message queues, no shared databases. Each service owns its own storage.
+All traffic routes through ralph-herds on `localhost:8000` via subdomain routing:
+
+- `http://localhost:8000/` — ralph-shows (default route)
+- `http://ralph-plans.localhost:8000/` — ralph-plans
+- `http://ralph-remembers.localhost:8000/` — ralph-remembers
+- `http://ralph-logs.localhost:8000/` — ralph-logs
+- `http://ralph-counts.localhost:8000/` — ralph-counts
+
+Each service receives `RALPH_*_URL` environment variables from herds at startup for inter-service communication. No service discovery, no message queues, no shared databases. Each service owns its own storage.
 
 ## Three-Tier Git
 

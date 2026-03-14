@@ -17,13 +17,15 @@ Exposes a Claude Code skill (`/ralph-goal`) that let users create, queue, and ma
 
 ## The Ralph Ecosystem
 
-| Service | Port | Language | Purpose |
-|---------|------|----------|---------|
-| ralph-shows | 5000 | TypeScript/Deno | Web dashboard |
-| ralph-plans | 5001 | Go | Goal state machine + SQLite storage (central API) |
-| ralph-runs | 5002 | Ruby | Orchestrator — spawns agents, manages clones |
-| ralph-logs | 5003 | Go | Real-time log streaming via WebSocket |
-| ralph-counts | 5004 | Python | Execution metrics dashboard |
+| Service | URL | Language | Purpose |
+|---------|-----|----------|---------|
+| ralph-herds | `localhost:8000` | Go | Process supervisor and reverse proxy |
+| ralph-shows | `localhost:8000` (default) | TypeScript/Deno | Web dashboard |
+| ralph-plans | `ralph-plans.localhost:8000` | Go | Goal state machine + SQLite storage (central API) |
+| ralph-runs | (no HTTP) | Ruby | Orchestrator — spawns agents, manages clones |
+| ralph-logs | `ralph-logs.localhost:8000` | Go | Real-time log streaming via WebSocket |
+| ralph-counts | `ralph-counts.localhost:8000` | Python | Execution metrics dashboard |
+| ralph-remembers | `ralph-remembers.localhost:8000` | Go | Long-term memory with hybrid search |
 
 All services communicate via REST through `RALPH_*_URL` env vars (set in `.envrc`).
 

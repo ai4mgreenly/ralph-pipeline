@@ -30,6 +30,7 @@ All commands below must be invoked with their full absolute path: `/home/ai4mgre
 
 | Command | Usage | Does |
 |---------|-------|------|
+| `memory-meta` | _(no args)_ | Show auto-derived `agent`, `project`, and `url` defaults for the current repo |
 | `memory-create` | `[--agent AGENT] [--project PROJECT] [--title TITLE] < body` | Create document. Body via stdin. |
 | `memory-get` | `<id>` | Retrieve a document by ID |
 | `memory-update` | `<id> [--title TITLE] < body` | Replace body (and optionally title). Snapshots prior state as revision. |
@@ -42,7 +43,7 @@ All commands below must be invoked with their full absolute path: `/home/ai4mgre
 
 When `--agent` or `--project` are omitted, scripts auto-derive them from the current git repository:
 
-- `--agent` defaults to the output of `git rev-parse --show-toplevel` (the absolute path to the repo root)
+- `--agent` defaults to `USER@<git rev-parse --show-toplevel>` — the current Unix user prefixed to the absolute repo root path (e.g. `alice@/home/alice/projects/my-repo`)
 - `--project` defaults to `org/repo` parsed from `git remote get-url origin`
 
 If either flag is omitted and the script is not run inside a git repository, it exits with an error:

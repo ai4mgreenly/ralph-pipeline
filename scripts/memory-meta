@@ -1,0 +1,62 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+#
+# scripts/memory-meta - Report auto-derived defaults for memory-* scripts
+#
+# Usage: memory-meta
+#
+# Output: JSON {"ok": true, "agent": "...", "project": "...", "url": "..."}
+# Exit code: 0 on success, 1 on failure
+#
+
+require 'json'
+
+RALPH_REMEMBERS_URL = ENV.fetch('RALPH_REMEMBERS_URL', 'http://ralph-remembers.localhost:8000')
+
+def derive_org_repo_from_remote
+  url = `git remote get-url origin 2>/dev/null`.strip
+  return [nil, nil] if url.empty?
+
+  # Local bare repo: /mnt/store/git/<org>/<repo>
+  if url.start_with?('/')
+    parts = url.split('/')
+    return [parts[-2], parts[-1]] if parts.length >= 2
+  end
+
+  # GitHub SSH URL: git@github.com:<org>/<repo>.git
+  if (m = url.match(/git@[^:]+:([^\/]+)\/(.+?)(?:\.git)?$/))
+    return [m[1], m[2]]
+  end
+
+  # HTTPS URL: https://github.com/<org>/<repo>.git
+  if (m = url.match(%r{https?://[^/]+/([^/]+)/(.+?)(?:\.git)?$}))
+    return [m[1], m[2]]
+  end
+
+  [nil, nil]
+end
+
+def main
+  toplevel = `git rev-parse --show-toplevel 2>/dev/null`.strip
+  if toplevel.empty?
+    puts JSON.generate(ok: false, error: 'not in a git repository')
+    exit 1
+  end
+
+  agent = "#{ENV['USER']}@#{toplevel}"
+
+  org, repo = derive_org_repo_from_remote
+  project = (org && repo) ? "#{org}/#{repo}" : nil
+
+  puts JSON.generate(ok: true, agent: agent, project: project, url: RALPH_REMEMBERS_URL)
+  exit 0
+end
+
+if __FILE__ == $PROGRAM_NAME
+  begin
+    main
+  rescue Interrupt
+    exit 130
+  end
+end

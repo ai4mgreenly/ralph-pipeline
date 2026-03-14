@@ -48,7 +48,7 @@ def derive_defaults
 
   org, repo = derive_org_repo_from_remote
   project = (org && repo) ? "#{org}/#{repo}" : nil
-  [toplevel, project]
+  ["#{ENV['USER']}@#{toplevel}", project]
 end
 
 def main

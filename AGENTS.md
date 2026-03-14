@@ -1,5 +1,9 @@
 # AGENTS.md
 
+> **All changes to this repo must go through ralph-goals — not local edits.**
+> Working clones are ephemeral: each goal run starts from a fresh checkout of `main@origin`.
+> Any local changes that are not committed and merged via a goal will be lost when the next goal runs.
+
 Claude Code plugin providing goal management skills for the Ralph autonomous development pipeline.
 
 ## Project Structure
@@ -52,6 +56,6 @@ Scripts require `RALPH_PLANS_URL` environment variable.
 
 - Goals specify **what**, never **how** — Ralph discovers the path
 - Body format: `## Objective`, `## Reference`, `## Outcomes`, `## Acceptance`
-- Default workflow is goals-first — local changes only when user explicitly requests
+- All changes go through ralph-goals — never make local edits directly to this repo
 - `goal-create` reads body from stdin; `--org` and `--repo` are optional (auto-derived from `git remote get-url origin`)
 - Originally developed against `ikigai-1` (C11 terminal agent) but not tied to any specific project
